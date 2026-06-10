@@ -24,11 +24,12 @@ public class TicketmasterProvider implements EventProvider {
     private final RestClient http;
 
     public TicketmasterProvider(
+            RestClient.Builder restClientBuilder,
             @Value("${app.discover.ticketmaster.api-key:}") String apiKey,
             @Value("${app.discover.ticketmaster.country-code:PT}") String countryCode) {
         this.apiKey = apiKey;
         this.countryCode = countryCode;
-        this.http = RestClient.builder()
+        this.http = restClientBuilder
                 .baseUrl("https://app.ticketmaster.com/discovery/v2")
                 .build();
     }

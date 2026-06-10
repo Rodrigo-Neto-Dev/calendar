@@ -25,9 +25,9 @@ public class SeatGeekProvider implements EventProvider {
     private final String clientId;
     private final RestClient http;
 
-    public SeatGeekProvider(@Value("${app.discover.seatgeek.client-id:}") String clientId) {
+    public SeatGeekProvider(RestClient.Builder restClientBuilder, @Value("${app.discover.seatgeek.client-id:}") String clientId) {
         this.clientId = clientId;
-        this.http = RestClient.builder().baseUrl("https://api.seatgeek.com/2").build();
+        this.http = restClientBuilder.baseUrl("https://api.seatgeek.com/2").build();
     }
 
     @Override public String name() { return "SeatGeek"; }
