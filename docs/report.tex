@@ -57,7 +57,7 @@
         \item \textbf{Security Testing}: Implemented dedicated security tests to verify authorization rules for anonymous and authenticated users.
         \item \textbf{Database Integration}: Verified the JPA layer using \texttt{@SpringBootTest} with an H2 database.
         \item \textbf{End-to-End Testing}: Created multiple Selenium journeys to verify full user flows, including registration, login, discovery, and meeting creation.
-        \item \textbf{CI/CD Optimization}: Categorized all tests using JUnit 5 tags and configured a multi-tier GitHub Actions pipeline for fast feedback and full validation.
+        \item \textbf{CI/CD Optimization}: Categorized all tests using JUnit 5 tags and configured a multi-tier GitHub Actions pipeline with manual triggers, concurrency controls, and artifact management.
     \end{enumerate}
 
     \section{Testing Details}
@@ -107,7 +107,7 @@
     \end{itemize}
 
     \section{CI/CD and Test Strategy Refactor}
-    To optimize the development lifecycle, the test suite was refactored with a multi-tier execution strategy.
+    To optimize the development lifecycle, the test suite was refactored with a multi-tier execution strategy incorporating real-world CI best practices.
 
     \subsection{JUnit 5 Tags}
     Tests are categorized into five groups:
@@ -126,12 +126,50 @@ mvn test -Dgroups="smoke"
     \end{lstlisting}
 
     \subsection{GitHub Actions Pipeline}
-    A multi-tier pipeline was implemented in \texttt{.github/workflows/ci.yml}:
+    A multi-tier pipeline was implemented in \texttt{.github/workflows/ci.yml} following industry-standard practices:
+
+    \subsubsection{Pipeline Triggers}
+    The workflow runs on three events:
     \begin{itemize}
-        \item \textbf{Feature Branches}: Runs only \texttt{smoke} and \texttt{unit} tests for fast feedback.
-        \item \textbf{Pull Requests}: Runs \texttt{smoke}, \texttt{unit}, and \texttt{integration} tests.
-        \item \textbf{Main/Master}: Runs the full suite including \texttt{provider} and \texttt{e2e} tests.
+        \item \textbf{Push to any branch}: Triggers fast feedback jobs.
+        \item \textbf{Pull Request to main/master}: Triggers integration validation.
+        \item \textbf{Manual dispatch} (\texttt{workflow\_dispatch}): Allows on-demand execution of the full test suite on any branch without requiring a merge.
     \end{itemize}
+
+    \subsubsection{Concurrency Control}
+    The pipeline uses GitHub's \texttt{concurrency} feature to automatically cancel outdated runs when new commits are pushed to the same branch. This prevents wasted runner minutes and ensures only the latest commit is being validated.
+
+    \subsubsection{Job Structure and Dependencies}
+    \begin{itemize}
+        \item \textbf{Fast Tests} (\texttt{unit + smoke}): Runs on every push to any branch. Includes a 10-minute timeout and publishes test reports via the Dorny Test Reporter for inline GitHub UI visualization. Artifacts are uploaded for offline debugging.
+        \item \textbf{Integration Tests} (\texttt{unit + smoke + integration}): Runs only on Pull Requests. Depends on fast tests passing first (\texttt{needs: fast-tests}), avoiding unnecessary compute if basic tests fail. 15-minute timeout.
+        \item \textbf{Full Tests} (\texttt{all groups}): Runs only on pushes to \texttt{main} or \texttt{master}. Also depends on fast tests. 20-minute timeout. This is the production gate.
+        \item \textbf{Manual Full Tests} (\texttt{all groups}): Runs exclusively via \texttt{workflow\_dispatch}. Allows developers to validate the complete suite on a feature branch before opening a PR, without polluting the branch with merge commits.
+        \item \textbf{Build JAR}: Runs on every push, packaging the application and uploading the artifact. Proves the app compiles into a deployable artifact.
+    \end{itemize}
+
+    \subsubsection{Real-World Optimizations}
+    \begin{itemize}
+        \item \textbf{Job Dependencies}: Slow jobs (integration, full tests) only run if fast tests pass, mimicking the \textit{fail-fast} pattern used in industry pipelines.
+        \item \textbf{Timeouts}: Every job has a strict timeout to prevent runaway processes from consuming GitHub Actions minutes.
+        \item \textbf{Artifact Uploads}: Test reports and JAR files are preserved as downloadable artifacts, enabling post-mortem analysis without re-running the pipeline.
+        \item \textbf{Test Reporter Integration}: JUnit XML results are rendered directly in the GitHub Checks UI, making failures visible without downloading logs.
+    \end{itemize}
+
+    \subsubsection{Running Tests Locally and in CI}
+    \begin{lstlisting}[language=bash]
+# Run all tests locally
+mvn test
+
+# Run only fast tests (feature branch feedback)
+mvn test -Dgroups="smoke | unit"
+
+# Run integration-level tests (PR validation)
+mvn test -Dgroups="smoke | unit | integration"
+
+# Run full suite (main branch or manual dispatch)
+mvn test -Dgroups="smoke | unit | integration | provider | e2e"
+    \end{lstlisting}
 
     \section{Modifications to the SUT}
     To enable effective testing, the following changes were made:
@@ -149,6 +187,6 @@ mvn test -Dgroups="smoke"
     \end{enumerate}
 
     \section{Conclusion}
-    The resulting test suite provides high coverage across all application layers. The combination of fast unit tests and comprehensive E2E tests ensures that both business logic and user-facing features are reliable.
+    The resulting test suite provides high coverage across all application layers. The combination of fast unit tests and comprehensive E2E tests ensures that both business logic and user-facing features are reliable. The CI pipeline follows real-world conventions with staged execution, manual triggers, concurrency control, and artifact management, making the development workflow efficient and maintainable.
 
 \end{document}
