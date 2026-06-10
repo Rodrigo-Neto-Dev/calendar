@@ -37,8 +37,8 @@ public class AgendaLxProvider implements EventProvider {
 
     private final RestClient http;
 
-    public AgendaLxProvider() {
-        this.http = RestClient.builder()
+    public AgendaLxProvider(RestClient.Builder restClientBuilder) {
+        this.http = restClientBuilder
                 .baseUrl("https://www.agendalx.pt/wp-json/agendalx/v1")
                 .defaultHeader("User-Agent",
                         "Mozilla/5.0 (compatible; meetings-app/0.1; +http://localhost)")

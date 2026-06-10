@@ -1,0 +1,154 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{color}
+
+\geometry{a4paper, margin=1in}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{VVS Assignment 2: Comprehensive Testing of the Calendar Application}
+\author{Rodrigo Neto}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+This report describes the testing strategy and implementation for the \textit{Calendar} application. The goal was to provide a robust test suite covering multiple levels of the application: Unit Testing, Integration Testing (3rd party, REST, and Database), and End-to-End (E2E) testing, along with Continuous Integration setup.
+
+\section{Step-by-Step Solution}
+The following steps were taken to fulfill the assignment requirements:
+\begin{enumerate}
+    \item \textbf{Environment Setup}: Added Maven dependencies for JUnit 5, Mockito, Selenium, WebDriverManager, and Spring Security Test.
+    \item \textbf{SUT Adaptation}: Modified the source code to improve testability, specifically injecting \texttt{RestClient.Builder} in discovery providers and adding \texttt{setId} methods to model classes.
+    \item \textbf{Unit Testing}: Developed tests for services using Mockito to isolate business logic from persistence.
+    \item \textbf{3rd Party Integration}: Used \texttt{@RestClientTest} to mock external API responses and verify parsing logic.
+    \item \textbf{REST API Integration}: Expanded test coverage to all controllers (\texttt{AuthController}, \texttt{MeetingController}, \texttt{DiscoveryController}, \texttt{CalendarController}, \texttt{ICalController}) using \texttt{MockMvc} and \texttt{@WebMvcTest}.
+    \item \textbf{Security Testing}: Implemented dedicated security tests to verify authorization rules for anonymous and authenticated users.
+    \item \textbf{Database Integration}: Verified the JPA layer using \texttt{@SpringBootTest} with an H2 database.
+    \item \textbf{End-to-End Testing}: Created multiple Selenium journeys to verify full user flows, including registration, login, discovery, and meeting creation.
+    \item \textbf{CI/CD Optimization}: Categorized all tests using JUnit 5 tags and configured a multi-tier GitHub Actions pipeline for fast feedback and full validation.
+\end{enumerate}
+
+\section{Testing Details}
+
+\subsection{Unit Testing (Business Logic)}
+Targeting the \texttt{service} and \texttt{discover} packages.
+\begin{itemize}
+    \item \textbf{UserServiceTest}: Tests user registration (success and duplicate username cases) and user retrieval.
+    \item \textbf{MeetingServiceTest}: Tests proposing meetings, responding to invites, and copying events from discovery.
+    \item \textbf{AppUserDetailsServiceTest}: Ensures Spring Security correctly loads user details.
+    \item \textbf{ICalServiceTest}: Verifies iCal feed generation and special character escaping.
+    \item \textbf{DiscoveryServiceTest}: Tests event aggregation, de-duplication, and sorting from multiple providers.
+\end{itemize}
+
+\subsection{Integration Testing (3rd Party Sources)}
+Targeting the \texttt{discover} package using \texttt{MockRestServiceServer}.
+\begin{itemize}
+    \item \textbf{AgendaLxProviderIntegrationTest}: Verifies parsing of Lisbon's Agenda Cultural JSON.
+    \item \textbf{TicketmasterProviderIntegrationTest}: Verifies parsing of Ticketmaster API responses.
+    \item \textbf{SeatGeekProviderIntegrationTest}: Verifies parsing of SeatGeek API responses.
+\end{itemize}
+
+\subsection{REST API Integration (Controllers)}
+Comprehensive coverage using \texttt{MockMvc}.
+\begin{itemize}
+    \item \textbf{AuthControllerTest}: Tests registration and login flows.
+    \item \textbf{MeetingControllerTest}: Tests meeting proposal and error handling.
+    \item \textbf{DiscoveryControllerTest}: Tests event discovery results and copying discovered events.
+    \item \textbf{CalendarControllerTest}: Tests calendar rendering for authenticated users.
+    \item \textbf{ICalControllerTest}: Verifies the public iCal feed endpoint.
+\end{itemize}
+
+\subsection{Security Testing}
+\begin{itemize}
+    \item \textbf{SecurityTest}: Specifically verifies that public endpoints are accessible and protected endpoints redirect to login for anonymous users, while allowing access to authenticated users.
+\end{itemize}
+
+\subsection{Database Integration}
+\begin{itemize}
+    \item \textbf{MeetingServiceIntegrationTest}: Performs a complete integration cycle from proposal to database state update.
+\end{itemize}
+
+\subsection{End-to-End Testing (Selenium)}
+\begin{itemize}
+    \item \textbf{FullFlowE2ETest}: Performs the basic registration $\to$ login $\to$ propose journey.
+    \item \textbf{ExpandedE2ETest}: Verifies discovery searching and logout flows, ensuring robustness of the browser-level interactions.
+\end{itemize}
+
+\section{CI/CD and Test Strategy Refactor}
+To optimize the development lifecycle, the test suite was refactored with a multi-tier execution strategy.
+
+\subsection{JUnit 5 Tags}
+Tests are categorized into five groups:
+\begin{itemize}
+    \item \texttt{unit}: Isolated logic tests ($< 1$s).
+    \item \texttt{smoke}: Critical paths required for application stability.
+    \item \texttt{integration}: Tests requiring Spring context or database.
+    \item \texttt{provider}: External service integration tests (mocked).
+    \item \texttt{e2e}: Slow browser automation tests.
+\end{itemize}
+
+\subsection{Maven Configuration}
+The \texttt{pom.xml} was updated to support test filtering via properties:
+\begin{lstlisting}[language=bash]
+mvn test -Dgroups="smoke"
+\end{lstlisting}
+
+\subsection{GitHub Actions Pipeline}
+A multi-tier pipeline was implemented in \texttt{.github/workflows/maven.yml}:
+\begin{itemize}
+    \item \textbf{Feature Branches}: Runs only \texttt{smoke} and \texttt{unit} tests for fast feedback.
+    \item \textbf{Pull Requests}: Runs \texttt{smoke}, \texttt{unit}, and \texttt{integration} tests.
+    \item \textbf{Main/Master}: Runs the full suite including \texttt{provider} and \texttt{e2e} tests.
+\end{itemize}
+
+\section{Modifications to the SUT}
+To enable effective testing, the following changes were made:
+\begin{itemize}
+    \item \textbf{Discovery Providers}: Changed from manual \texttt{RestClient} instantiation to \texttt{RestClient.Builder} constructor injection. This allows Spring's \texttt{@RestClientTest} to intercept and mock HTTP calls.
+    \item \textbf{Model Classes}: Added \texttt{setId(Long id)} to \texttt{User} and \texttt{Meeting}. This was necessary to mock persistence-assigned IDs in unit and REST tests.
+\end{itemize}
+
+\section{How to Run the Tests}
+Ensure you have Maven and a JDK (17+) installed.
+\begin{enumerate}
+    \item Navigate to the \texttt{calendar} directory.
+    \item Run all tests: \texttt{mvn test}
+    \item To run a specific test class: \texttt{mvn test -Dtest=ClassName}
+\end{enumerate}
+
+\section{Conclusion}
+The resulting test suite provides high coverage across all application layers. The combination of fast unit tests and comprehensive E2E tests ensures that both business logic and user-facing features are reliable.
+
+\end{document}
