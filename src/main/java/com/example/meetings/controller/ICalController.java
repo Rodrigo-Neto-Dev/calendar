@@ -5,18 +5,16 @@ import com.example.meetings.model.User;
 import com.example.meetings.repository.UserRepository;
 import com.example.meetings.service.ICalService;
 import com.example.meetings.service.MeetingService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-@Controller
+@RestController
 public class ICalController {
 
     private final UserRepository userRepository;
@@ -33,8 +31,10 @@ public class ICalController {
 
     @GetMapping(value = "/ical/{token}.ics", produces = "text/calendar")
     public ResponseEntity<byte[]> feed(@PathVariable String token) {
-        User user = userRepository.findByIcalToken(token)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        User user = userRepository.findByIcalToken(token).orElse(null);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
         List<Meeting> meetings = meetingService.calendarFor(user);
         byte[] body = icalService.render(user, meetings).getBytes(StandardCharsets.UTF_8);
         return ResponseEntity.ok()

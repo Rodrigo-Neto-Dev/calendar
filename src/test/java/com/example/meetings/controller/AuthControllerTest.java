@@ -65,4 +65,10 @@ class AuthControllerTest {
                 .andExpect(model().attribute("error", "Username taken"))
                 .andExpect(view().name("register"));
     }
+    @Test
+    void root_RedirectsToCalendar() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/calendar"));
+    }
 }

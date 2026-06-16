@@ -105,6 +105,37 @@ class MeetingServiceTest {
     }
 
     @Test
+    void respond_NoInviteFound_ThrowsException() {
+        when(participantRepository.findByMeetingIdAndUserId(1L, invitee.getId())).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> 
+            meetingService.respond(1L, invitee, InviteStatus.ACCEPTED)
+        );
+    }
+
+    @Test
+    void propose_OrganizerInvitesSelf_IsSkipped() {
+        when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Meeting meeting = meetingService.propose(organizer, "Title", "Desc", start, end, List.of("organizer"));
+
+        assertNotNull(meeting);
+        assertEquals(1, meeting.getParticipants().size());
+        assertTrue(meeting.getParticipants().stream().anyMatch(p -> p.getUser().equals(organizer) && p.getStatus() == InviteStatus.ACCEPTED));
+    }
+
+    @Test
+    void propose_DuplicateInvitees_AreDeduplicated() {
+        when(userRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+        when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Meeting meeting = meetingService.propose(organizer, "Title", "Desc", start, end, List.of("invitee", "invitee", "   ", "invitee"));
+
+        assertNotNull(meeting);
+        assertEquals(2, meeting.getParticipants().size());
+    }
+
+    @Test
     void copyFromDiscovered_Success_DefaultDuration() {
         DiscoveredEvent event = new DiscoveredEvent("Source", "extId", "Event", "Desc", start, null, "url", "venue");
         when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -116,4 +147,56 @@ class MeetingServiceTest {
         assertEquals(1, meeting.getParticipants().size());
         verify(meetingRepository).save(any(Meeting.class));
     }
+
+    @Test
+    void copyFromDiscovered_WithExplicitEndTime_Success() {
+        Instant explicitEnd = start.plus(Duration.ofHours(5));
+        DiscoveredEvent event = new DiscoveredEvent("Source", "extId", "Event", "Desc", start, explicitEnd, "url", "venue");
+        when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Meeting meeting = meetingService.copyFromDiscovered(organizer, event);
+
+        assertNotNull(meeting);
+        assertEquals(explicitEnd, meeting.getEndTime());
+        assertEquals(1, meeting.getParticipants().size());
+    }
+    @Test
+    void propose_NullTitle_StillPersists() {
+        when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Meeting meeting = meetingService.propose(organizer, null, "Desc", start, end, List.of());
+
+        assertNotNull(meeting);
+        assertNull(meeting.getTitle());
+        assertEquals(1, meeting.getParticipants().size());
+        verify(meetingRepository).save(any(Meeting.class));
+    }
+
+    @Test
+    void propose_NullOrganizer_ThrowsNpe() {
+        // Meeting constructor requires non-null organizer (ManyToOne optional=false)
+        assertThrows(NullPointerException.class, () ->
+                meetingService.propose(null, "Title", "Desc", start, end, List.of())
+        );
+    }
+
+    @Test
+    void propose_EmptyInviteeList_OnlyOrganizer() {
+        when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Meeting meeting = meetingService.propose(organizer, "Title", "Desc", start, end, List.of());
+
+        assertNotNull(meeting);
+        assertEquals(1, meeting.getParticipants().size());
+        assertTrue(meeting.getParticipants().stream()
+                .anyMatch(p -> p.getUser().equals(organizer) && p.getStatus() == InviteStatus.ACCEPTED));
+    }
+
+    @Test
+    void respond_NullStatus_ThrowsException() {
+        assertThrows(IllegalArgumentException.class, () ->
+                meetingService.respond(1L, invitee, null)
+        );
+    }
 }
+

@@ -19,6 +19,15 @@ public class UserService {
 
     @Transactional
     public User register(String username, String email, String rawPassword) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email cannot be null or empty");
+        }
+        if (rawPassword == null || rawPassword.isBlank()) {
+            throw new IllegalArgumentException("Password cannot be null or empty");
+        }
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username already taken");
         }

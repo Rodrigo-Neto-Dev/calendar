@@ -40,7 +40,7 @@ public class ICalControllerTest {
     private ICalService icalService;
 
     @Test
-    void feed_Success_ReturnsIcalContent() throws Exception {
+    void exportCalendar_ValidToken_ReturnsIcsFile() throws Exception {
         User user = new User("testuser", "test@example.com", "pass");
         when(userRepository.findByIcalToken("valid-token")).thenReturn(Optional.of(user));
         when(meetingService.calendarFor(user)).thenReturn(List.of());
@@ -53,7 +53,19 @@ public class ICalControllerTest {
     }
 
     @Test
-    void feed_InvalidToken_ReturnsNotFound() throws Exception {
+    void exportCalendar_EmptyCalendar_ReturnsValidIcs() throws Exception {
+        User user = new User("testuser", "test@example.com", "pass");
+        when(userRepository.findByIcalToken("valid-token")).thenReturn(Optional.of(user));
+        when(meetingService.calendarFor(user)).thenReturn(List.of());
+        when(icalService.render(any(), any())).thenReturn("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR");
+
+        mockMvc.perform(get("/ical/valid-token.ics"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR"));
+    }
+
+    @Test
+    void exportCalendar_InvalidToken_ReturnsNotFound() throws Exception {
         when(userRepository.findByIcalToken("invalid")).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/ical/invalid.ics"))

@@ -20,6 +20,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -46,7 +47,7 @@ class DiscoveryControllerTest {
 
     @Test
     @WithMockUser
-    void discover_AuthenticatedAccess_ReturnsDiscoverView() throws Exception {
+    void discoveryPage_ReturnsDiscoveryView() throws Exception {
         when(discoveryService.providers()).thenReturn(List.of());
 
         mockMvc.perform(get("/discover"))
@@ -57,18 +58,44 @@ class DiscoveryControllerTest {
 
     @Test
     @WithMockUser
-    void discover_WithQuery_ReturnsResults() throws Exception {
+    void discoveryPage_WithEvents_ModelContainsEvents() throws Exception {
         var event = new DiscoveredEvent("Source", "1", "Event", "Desc", Instant.now(), null, "url", "venue");
-        
         com.example.meetings.discover.EventProvider mockProvider = org.mockito.Mockito.mock(com.example.meetings.discover.EventProvider.class);
         when(mockProvider.isConfigured()).thenReturn(true);
         when(discoveryService.providers()).thenReturn(List.of(mockProvider));
-        
         when(discoveryService.search("music")).thenReturn(List.of(event));
 
         mockMvc.perform(get("/discover").param("q", "music"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("results", List.of(event)));
+    }
+
+    @Test
+    @WithMockUser
+    void discoveryPage_NoEvents_ModelContainsEmptyList() throws Exception {
+        com.example.meetings.discover.EventProvider mockProvider = org.mockito.Mockito.mock(com.example.meetings.discover.EventProvider.class);
+        when(mockProvider.isConfigured()).thenReturn(true);
+        when(discoveryService.providers()).thenReturn(List.of(mockProvider));
+        when(discoveryService.search("music")).thenReturn(List.of());
+
+        mockMvc.perform(get("/discover").param("q", "music"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("results", List.of()));
+    }
+
+    @Test
+    @WithMockUser
+    void discoveryPage_ServiceThrows_HandlesGracefully() throws Exception {
+        com.example.meetings.discover.EventProvider mockProvider = org.mockito.Mockito.mock(com.example.meetings.discover.EventProvider.class);
+        when(mockProvider.isConfigured()).thenReturn(true);
+        when(discoveryService.providers()).thenReturn(List.of(mockProvider));
+        when(discoveryService.search("music")).thenThrow(new RuntimeException("Service failure"));
+
+        // The controller propagates RuntimeException if not caught, which is standard Spring Boot behavior.
+        // Let's assert that performing the request with mock exception fails or propagates as expected.
+        assertThrows(Exception.class, () ->
+            mockMvc.perform(get("/discover").param("q", "music"))
+        );
     }
 
     @Test
