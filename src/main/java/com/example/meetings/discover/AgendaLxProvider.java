@@ -114,9 +114,18 @@ public class AgendaLxProvider implements EventProvider {
         }
     }
 
+    /**
+     * Returns the venue with the lexicographically smallest key.
+     * The API returns venues as a map keyed by venue ID strings (e.g., "1", "2").
+     * Sorting by key ensures deterministic "first" selection.
+     */
     private static String firstVenueName(Map<String, AlxVenue> venue) {
         if (venue == null || venue.isEmpty()) return null;
-        AlxVenue first = venue.values().iterator().next();
+        String firstKey = venue.keySet().stream()
+                .sorted()
+                .findFirst()
+                .orElse(null);
+        AlxVenue first = firstKey != null ? venue.get(firstKey) : null;
         return first != null ? first.name : null;
     }
 
