@@ -55,10 +55,100 @@ class UserServiceTest {
     void register_UsernameTaken_ThrowsException() {
         when(userRepository.existsByUsername("testuser")).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            userService.register("testuser", "test@example.com", "rawPassword")
+        assertThrows(IllegalArgumentException.class, () ->
+                userService.register("testuser", "test@example.com", "rawPassword")
         );
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void register_NullUsername_ThrowsIllegalArgumentException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                userService.register(null, "e@e.com", "pass")
+        );
+        assertEquals("Username cannot be null or empty", ex.getMessage());
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void register_EmptyUsername_ThrowsIllegalArgumentException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                userService.register("", "e@e.com", "pass")
+        );
+        assertEquals("Username cannot be null or empty", ex.getMessage());
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void register_BlankUsername_ThrowsIllegalArgumentException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                userService.register("   ", "e@e.com", "pass")
+        );
+        assertEquals("Username cannot be null or empty", ex.getMessage());
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void register_NullEmail_ThrowsIllegalArgumentException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                userService.register("user", null, "pass")
+        );
+        assertEquals("Email cannot be null or empty", ex.getMessage());
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void register_EmptyEmail_ThrowsIllegalArgumentException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                userService.register("user", "", "pass")
+        );
+        assertEquals("Email cannot be null or empty", ex.getMessage());
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void register_BlankEmail_ThrowsIllegalArgumentException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                userService.register("user", "   ", "pass")
+        );
+        assertEquals("Email cannot be null or empty", ex.getMessage());
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void register_NullPassword_ThrowsIllegalArgumentException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                userService.register("user", "e@e.com", null)
+        );
+        assertEquals("Password cannot be null or empty", ex.getMessage());
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void register_EmptyPassword_ThrowsIllegalArgumentException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                userService.register("user", "e@e.com", "")
+        );
+        assertEquals("Password cannot be null or empty", ex.getMessage());
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void register_BlankPassword_ThrowsIllegalArgumentException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                userService.register("user", "e@e.com", "   ")
+        );
+        assertEquals("Password cannot be null or empty", ex.getMessage());
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.example.meetings.controller;
 
+import com.example.meetings.model.Meeting;
 import com.example.meetings.model.User;
 import com.example.meetings.service.MeetingService;
 import com.example.meetings.service.UserService;
@@ -12,6 +13,7 @@ import com.example.meetings.config.SecurityConfig;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.Mockito.when;
@@ -36,7 +38,7 @@ class CalendarControllerTest {
 
     @Test
     @WithMockUser(username = "testuser")
-    void calendar_AuthenticatedAccess_ReturnsCalendarView() throws Exception {
+    void calendarPage_Authenticated_ReturnsCalendarView() throws Exception {
         User user = new User("testuser", "test@example.com", "pass");
         user.setId(1L);
         when(userService.requireByUsername("testuser")).thenReturn(user);
@@ -50,7 +52,38 @@ class CalendarControllerTest {
     }
 
     @Test
-    void calendar_AnonymousAccess_RedirectsToLogin() throws Exception {
+    @WithMockUser(username = "testuser")
+    void calendarPage_WithMeetings_ModelContainsMeetings() throws Exception {
+        User user = new User("testuser", "test@example.com", "pass");
+        user.setId(1L);
+        Meeting meeting = new Meeting("Test Meeting", "Desc", Instant.now(), Instant.now().plusSeconds(3600), user);
+        meeting.setId(42L);
+
+        when(userService.requireByUsername("testuser")).thenReturn(user);
+        when(meetingService.calendarFor(user)).thenReturn(List.of(meeting));
+        when(meetingService.pendingInvitesFor(user)).thenReturn(List.of());
+
+        mockMvc.perform(get("/calendar"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("meetings", List.of(meeting)));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void calendarPage_EmptyCalendar_ModelContainsEmptyList() throws Exception {
+        User user = new User("testuser", "test@example.com", "pass");
+        user.setId(1L);
+        when(userService.requireByUsername("testuser")).thenReturn(user);
+        when(meetingService.calendarFor(user)).thenReturn(List.of());
+        when(meetingService.pendingInvitesFor(user)).thenReturn(List.of());
+
+        mockMvc.perform(get("/calendar"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("meetings", List.of()));
+    }
+
+    @Test
+    void calendarPage_Unauthenticated_RedirectsToLogin() throws Exception {
         mockMvc.perform(get("/calendar"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("**/login"));

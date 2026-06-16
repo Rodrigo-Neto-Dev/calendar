@@ -75,4 +75,31 @@ class MeetingControllerTest {
                 .andExpect(model().attribute("error", "Invalid time"))
                 .andExpect(view().name("propose"));
     }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void respond_Accept_RedirectsToCalendar() throws Exception {
+        User user = new User("testuser", "test@example.com", "pass");
+        when(userService.requireByUsername("testuser")).thenReturn(user);
+
+        mockMvc.perform(post("/meetings/1/respond")
+                        .param("action", "accept")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/calendar"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void respond_Decline_RedirectsToCalendar() throws Exception {
+        User user = new User("testuser", "test@example.com", "pass");
+        when(userService.requireByUsername("testuser")).thenReturn(user);
+
+        mockMvc.perform(post("/meetings/1/respond")
+                        .param("action", "decline")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/calendar"));
+    }
 }
+
